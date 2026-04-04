@@ -340,15 +340,17 @@ defineProps({
 .pf-orb--3 { width: 600px; height: 400px; bottom: 10%; left: 20%; background: radial-gradient(circle, rgba(16,185,129,.08) 0%, transparent 70%); }
 
 /* ─── LAYOUT WRAPPERS ─── */
-.pf-root > * { position: relative; z-index: 2; }
+.pf-hero, .pf-section, .pf-footer { position: relative; z-index: 2; }
 
 /* ─── NAV ─── */
 .pf-nav {
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
     z-index: 100;
     border-bottom: 1px solid rgba(255 255 255 / .06);
-    background: rgba(9 9 11 / .7);
+    background: rgba(9 9 11 / .8);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
 }
@@ -426,18 +428,19 @@ defineProps({
 .pf-hero {
     max-width: 900px;
     margin: 0 auto;
-    padding: 52px 24px 52px;
+    padding: 24px 24px 40px; /* Reducido drásticamente para subir la info */
     text-align: center;
+    margin-top: 60px; /* Espacio para el navbar fijo */
 }
 .pf-hero__tag {
     display: inline-flex; align-items: center; gap: 8px;
-    font-size: 12px; font-weight: 600;
+    font-size: 11px; font-weight: 600;
     color: #818cf8;
     background: rgba(99,102,241,.08);
     border: 1px solid rgba(99,102,241,.2);
-    padding: 6px 14px;
+    padding: 4px 12px;
     border-radius: 20px;
-    margin-bottom: 32px;
+    margin-bottom: 20px; /* Reducido de 32px */
     letter-spacing: .04em; text-transform: uppercase;
 }
 .pf-pulse {
@@ -458,12 +461,12 @@ defineProps({
 @keyframes pulse-ring { 0%,100%{transform:scale(1);opacity:.6} 50%{transform:scale(1.8);opacity:0} }
 
 .pf-hero__title {
-    font-size: clamp(42px, 7vw, 76px);
+    font-size: clamp(36px, 6vw, 64px); /* Reducido para mejor framing */
     font-weight: 900;
     line-height: 1.05;
     letter-spacing: -.04em;
     color: #fff;
-    margin: 0 0 24px;
+    margin: 0 0 16px; /* Reducido de 24px */
 }
 .pf-gradient-text {
     background: linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #c084fc 100%);
@@ -472,11 +475,11 @@ defineProps({
     background-clip: text;
 }
 .pf-hero__sub {
-    font-size: 18px;
-    line-height: 1.7;
+    font-size: 16px;
+    line-height: 1.6;
     color: #71717a;
     max-width: 600px;
-    margin: 0 auto 40px;
+    margin: 0 auto 32px; /* Reducido de 40px */
 }
 .pf-hero__sub strong { color: #a1a1aa; font-weight: 600; }
 .pf-hero__cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
@@ -499,7 +502,7 @@ defineProps({
 .pf-section {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 48px 24px 72px;
+    padding: 32px 24px 64px; /* Mucho más compacto */
     text-align: center;
 }
 .pf-section__label {
