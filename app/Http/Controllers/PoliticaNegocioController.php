@@ -16,11 +16,17 @@ class PoliticaNegocioController extends Controller
      */
     public function index()
     {
-        // Obtenemos un listado general 
-        $politicas = PoliticaNegocio::latest()->get();
+        // Obtenemos un listado general con sus colaboradores anidados
+        $politicas = PoliticaNegocio::with('colaboradores.usuario')
+            ->latest()
+            ->get();
+
+        // Todos los usuarios del sistema (para el modal de colaboradores)
+        $usuarios = \App\Models\User::select('id', 'name', 'email')->get();
 
         return Inertia::render('PoliticaNegocio/index', [
-            'politicas' => $politicas
+            'politicas' => $politicas,
+            'usuarios'  => $usuarios,
         ]);
     }
 

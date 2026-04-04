@@ -21,6 +21,11 @@ class PoliticaNegocio extends Model
         return $this->hasMany(UsuarioDiagrama::class, 'id_politica');
     }
 
+    public function colaboradores()
+    {
+        return $this->hasMany(Colaborador::class, 'id_politica')->with('usuario');
+    }
+
     /**
      * Genera el JSON base para un diagrama GoJS nuevo.
      * El Pool principal lleva el nombre de la política.
