@@ -311,11 +311,22 @@ onMounted(() => {
     if (props.logJson) {
         myDiagram.model = go.Model.fromJson(props.logJson);
     } else {
-        // Fallback model
-        myDiagram.model = new go.GraphLinksModel();
+        // Modelo base con Pool y un carril inicial
+        const model = new go.GraphLinksModel();
+        model.nodeDataArray = [
+            { key: 'Pool1', text: props.politica.nombre, isGroup: true, category: 'Pool', color: 'white' },
+            { key: 'Lane1', text: 'Carril 1', isGroup: true, category: 'Lane', group: 'Pool1', color: 'lightyellow' },
+        ];
+        model.linkDataArray = [];
+        myDiagram.model = model;
     }
-    
-    myDiagram.delayInitialization(relayoutDiagram);
+
+    // CLAVE: usar relayoutLanes en vez de relayoutDiagram.
+    // Los Lane tienen isInitial:false e isOngoing:false, asi que su layout
+    // interno NUNCA se ejecuta automaticamente. Hay que forzarlo.
+    myDiagram.delayInitialization(() => {
+        relayoutLanes();
+    });
 });
 
 // Guardar
@@ -327,18 +338,95 @@ const saveDiagram = () => {
     });
 };
 
+// Contador propio para evitar que GoJS genere keys negativas (-5, -6, etc.)
+let nodeCounter = 100;
+
+// Inicializar el contador basándose en keys existentes del JSON guardado
+// para evitar colisiones al reabrir un diagrama.
+if (props.logJson) {
+    try {
+        const parsed = JSON.parse(props.logJson);
+        if (parsed.nodeDataArray) {
+            parsed.nodeDataArray.forEach(n => {
+                const key = String(n.key);
+                const match = key.match(/^(?:node_|lane_)(\d+)$/);
+                if (match) {
+                    nodeCounter = Math.max(nodeCounter, parseInt(match[1]));
+                }
+            });
+        }
+    } catch (_) { /* JSON inválido, usar contador por defecto */ }
+}
+
+/**
+ * Obtiene el carril (Lane) actualmente seleccionado en el diagrama.
+ * Si la selección actual es un nodo dentro de un Lane, devuelve ese Lane.
+ * Si la selección es directamente un Lane, lo devuelve.
+ * Retorna null si no hay ningún Lane seleccionado.
+ */
+const getSelectedLane = () => {
+    if (!myDiagram) return null;
+    const sel = myDiagram.selection.first();
+    if (!sel) return null;
+
+    // Si el seleccionado es un nodo dentro de un Lane
+    if (sel instanceof go.Node && !(sel instanceof go.Group)) {
+        const grp = sel.containingGroup;
+        if (grp && grp.category === 'Lane') return grp;
+    }
+
+    // Si el seleccionado es directamente un Lane
+    if (sel instanceof go.Group && sel.category === 'Lane') return sel;
+
+    return null;
+};
+
 const addActivity = () => {
     if (!myDiagram) return;
-    myDiagram.startTransaction('add node');
-    const newNodeData = { text: "Nueva Act.", group: "Lane1" };
-    myDiagram.model.addNodeData(newNodeData);
-    myDiagram.commitTransaction('add node');
+
+    const lane = getSelectedLane();
+    if (!lane) {
+        alert('Selecciona un carril antes de agregar una actividad.');
+        return;
+    }
+
+    myDiagram.startTransaction('add activity');
+    const newKey = 'node_' + (++nodeCounter);
+    myDiagram.model.addNodeData({
+        key: newKey,
+        text: 'Actividad',
+        group: lane.data.key
+    });
+    // CLAVE: Como el Lane tiene isOngoing:false, GoJS no invalida automaticamente
+    // el layout interno al agregar un nodo. Hay que hacerlo manualmente.
+    lane.layout.isValidLayout = false;
+    myDiagram.commitTransaction('add activity');
 };
 
 const addLane = () => {
     if (!myDiagram) return;
+
+    // Busca dinámicamente el Pool existente en el modelo (no hardcodeado)
+    let poolKey = null;
+    myDiagram.findTopLevelGroups().each(g => {
+        if (g.category === 'Pool') poolKey = g.data.key;
+    });
+
+    if (!poolKey) {
+        alert('No se encontró un Pool en el diagrama.');
+        return;
+    }
+
     myDiagram.startTransaction('add lane');
-    const newLaneData = { text: "Nuevo Carril", isGroup: true, category: "Lane", group: "Pool1", color: "lightgrey" };
+    const newLaneKey = 'lane_' + (++nodeCounter);
+    const newLaneData = {
+        key: newLaneKey,
+        text: 'Nuevo Carril',
+        isGroup: true,
+        category: 'Lane',
+        group: poolKey,  // Usa la key real del Pool
+        color: 'lightcyan'
+    };
     myDiagram.model.addNodeData(newLaneData);
     myDiagram.commitTransaction('add lane');
     relayoutLanes();

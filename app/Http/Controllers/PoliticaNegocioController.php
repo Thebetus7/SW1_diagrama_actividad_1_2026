@@ -41,19 +41,8 @@ class PoliticaNegocioController extends Controller
             'estado' => $validated['estado'] ?? 'borrador'
         ]);
 
-        // JSON basico para goJS
-        $jsonBase = json_encode([
-            "class" => "go.GraphLinksModel",
-            "nodeDataArray" => [
-                ["key" => "Pool1", "text" => "Pool de Inicio", "isGroup" => true, "category" => "Pool"],
-                ["key" => "Lane1", "text" => "Carril 1", "isGroup" => true, "category" => "Lane", "group" => "Pool1", "color" => "lightblue"],
-                ["key" => "inicio", "text" => "Inicio", "group" => "Lane1", "category" => "Start"],
-                ["key" => "actividad1", "text" => "Primera Actividad", "group" => "Lane1"]
-            ],
-            "linkDataArray" => [
-                ["from" => "inicio", "to" => "actividad1"]
-            ]
-        ]);
+        // JSON basico para goJS (generado desde el modelo)
+        $jsonBase = PoliticaNegocio::getBaseJsonDiagram($validated['nombre']);
 
         $log = LogDiagram::create([
             'json' => $jsonBase
