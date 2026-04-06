@@ -4,6 +4,7 @@ import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import * as go from 'gojs';
+import axios from 'axios';
 
 const props = defineProps({
     politica: Object,
@@ -16,6 +17,7 @@ const form = useForm({
 
 const diagramDiv = ref(null);
 let myDiagram = null;
+let isApplyingRemoteChange = false;
 
 // Parámetros de GoJS
 const MINLENGTH = 200;
@@ -327,16 +329,54 @@ onMounted(() => {
     myDiagram.delayInitialization(() => {
         relayoutLanes();
     });
+
+    // Websocket: Escuchar actualizaciones remotas
+    if (window.Echo) {
+        window.Echo.join(`diagrama.${props.politica.id}`)
+            .listen('.DiagramUpdated', (e) => {
+                if (!myDiagram) return;
+                
+                // Evitamos retransmitir al momento de aplicar
+                isApplyingRemoteChange = true;
+                
+                const savedPos = myDiagram.position; 
+                myDiagram.model = go.Model.fromJson(e.json);
+                
+                myDiagram.delayInitialization(() => {
+                    relayoutLanes();
+                    myDiagram.position = savedPos;
+                    // Prolongamos la bandera de protección unos ms para absorber posibles animaciones o layouts internos que GoJS dispare tras renderizar
+                    setTimeout(() => { isApplyingRemoteChange = false; }, 400);
+                });
+            });
+    }
+
+    let debounceTimer = null;
+
+    // Websocket: Emitir cuando el usuario realiza una modificación manual
+    myDiagram.addModelChangedListener((e) => {
+        // Enviar sólo si terminó la transacción local y no estamos aplicando una externa
+        if (e.isTransactionFinished && !isApplyingRemoteChange) {
+            
+            // FILTRO: Evitar que el redibujado automático o layout interno dispare auto-guardados continuos a la BD
+            if (e.object && (e.object.name === "Initial Layout" || e.object.name === "Layout" || e.object.name === "PoolLayout")) {
+                return;
+            }
+            
+            if (debounceTimer) clearTimeout(debounceTimer);
+            
+            debounceTimer = setTimeout(() => {
+                axios.post(route('politica_negocio.broadcast', props.politica.id), {
+                    json: myDiagram.model.toJson()
+                }).catch(() => {});
+            }, 800); // Demorar 800ms
+        }
+    });
 });
 
-// Guardar
-const saveDiagram = () => {
-    form.json = myDiagram.model.toJson();
-    form.put(route('politica_negocio.update', props.politica.id), {
-        preserveScroll: true,
-        onSuccess: () => alert('Diagrama guardado exitosamente.')
-    });
-};
+// Guardar manual desactivado (ahora es auto-guardado)
+// let form = useForm({...}) se mantiene por compatibilidad si es necesario, pero omitimos método saveDiagram
+
 
 // Contador propio para evitar que GoJS genere keys negativas (-5, -6, etc.)
 let nodeCounter = 100;
@@ -442,9 +482,9 @@ const addLane = () => {
                     Diagramador: {{ politica.nombre }}
                 </h2>
                 <div class="flex space-x-2">
-                    <PrimaryButton @click="saveDiagram" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                        Guardar Cambios
-                    </PrimaryButton>
+                    <span class="text-sm font-medium text-green-600 self-center hidden" id="save-status">
+                        Cambiado a Modo Auto-Guardado y Transmisión Libre
+                    </span>
                 </div>
             </div>
         </template>

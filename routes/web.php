@@ -25,6 +25,10 @@ Route::middleware([
     })->name('dashboard');
 
     Route::resource('politica_negocio', PoliticaNegocioController::class);
+    
+    // Broadcast del diagrama en tiempo real
+    Route::post('/politica_negocio/{politica_negocio}/broadcast', [PoliticaNegocioController::class, 'broadcastDiagram'])
+        ->name('politica_negocio.broadcast');
 
     // Rutas anidadas para colaboradores
     Route::post('/politica_negocio/{politica_negocio}/colaboradores', [ColaboradorController::class, 'store'])

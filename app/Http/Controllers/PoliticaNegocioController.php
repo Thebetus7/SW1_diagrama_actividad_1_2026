@@ -8,6 +8,7 @@ use App\Models\UsuarioDiagrama;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use App\Events\DiagramUpdated;
 
 class PoliticaNegocioController extends Controller
 {
@@ -110,5 +111,31 @@ class PoliticaNegocioController extends Controller
     {
         $politica_negocio->delete();
         return redirect()->back();
+    }
+
+    /**
+     * Hace el Auto-guardado y broadcast del JSON a los mánagers / participantes usando Presence o Private Channel.
+     */
+    public function broadcastDiagram(Request $request, PoliticaNegocio $politica_negocio)
+    {
+        $request->validate([
+            'json' => 'required|string'
+        ]);
+
+        // AUTO-GUARDADO: guardamos los cambios en base de datos.
+        $log = LogDiagram::create([
+            'json' => $request->json
+        ]);
+
+        UsuarioDiagrama::create([
+            'id_user' => Auth::id(),
+            'id_politica' => $politica_negocio->id,
+            'id_log_diag' => $log->id
+        ]);
+
+        // Emitimos el evento a otros. El frontend se encarga de recibir.
+        broadcast(new DiagramUpdated($politica_negocio->id, $request->json))->toOthers();
+
+        return response()->json(['status' => 'Auto-Guardado Exitoso!']);
     }
 }
